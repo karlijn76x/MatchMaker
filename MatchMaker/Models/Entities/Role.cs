@@ -1,10 +1,9 @@
 ﻿namespace MatchMaker.Models.Entities
 {
-    public class Lane
+    public class Role
     {
         public required int Id { get; set; }
-        public string? Name { get; set; }
-
+        public required string Name { get; set; }
         public ICollection<UserPreferences> UserPreferences { get; set; } = new List<UserPreferences>();
 
     }

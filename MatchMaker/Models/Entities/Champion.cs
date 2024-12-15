@@ -6,5 +6,8 @@
         public required string Name { get; set; }
         public string? Type { get; set; }
         public DateOnly? ReleaseDate { get; set; }
+
+        public ICollection<UserPreferences> UserPreferences { get; set; } = new List<UserPreferences>();
+
     }
 }

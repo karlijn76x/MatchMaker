@@ -1,8 +1,9 @@
 ﻿using MatchMaker.Data;
 using MatchMaker.Models.Entities;
-using MatchMaker.Models;
 using Microsoft.AspNetCore.Mvc;
 using MatchMaker.Services;
+using MatchMaker.Interfaces;
+using Microsoft.EntityFrameworkCore;
 
 namespace MatchMaker.Controllers
 {
@@ -10,10 +11,10 @@ namespace MatchMaker.Controllers
     [Route("api/[controller]")]
     public class UserController : Controller
     {
-        private readonly ApplicationDbContext dbContext;
+        private readonly IApplicationDbContext dbContext;
         private readonly PasswordHelper passwordHelper;
 
-        public UserController(ApplicationDbContext dbContext, PasswordHelper passwordHelper)
+        public UserController(IApplicationDbContext dbContext, PasswordHelper passwordHelper)
         {
             this.dbContext = dbContext;
             this.passwordHelper = passwordHelper;
@@ -48,6 +49,7 @@ namespace MatchMaker.Controllers
                 PasswordHash = hashedPassword,
                 Email = addUserDTO.Email,
                 Region = addUserDTO.Region,
+                Rank = addUserDTO.Rank,
                 SummonerName = addUserDTO.SummonerName
             };
 
@@ -57,5 +59,42 @@ namespace MatchMaker.Controllers
             return CreatedAtAction(nameof(GetUsers), new { id = userEntity.Id }, userEntity);
         }
 
+        [HttpPut]
+        public async Task<IActionResult> CompleteUser([FromBody] UpdateUserDTO updateUserDTO)
+        {
+            if (!ModelState.IsValid)
+            {
+                var errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage);
+                return BadRequest(new { message = "Invalid input", errors });
+
+            }
+
+            var user = await dbContext.Users
+                .Include(u => u.UserPreferences)
+                .FirstOrDefaultAsync(u => u.Id == updateUserDTO.Id);
+
+            if (user == null)
+            {
+                return NotFound("User not found.");
+            }
+
+            user.Bio = updateUserDTO.Bio;
+            user.SummonerName = updateUserDTO.SummonerName;
+
+            user.UserPreferences.Clear();
+            foreach (var preference in updateUserDTO.Preferences)
+            {
+                user.UserPreferences.Add(new UserPreferences
+                {
+                    UserId = user.Id,
+                    RoleId = preference.RoleId,
+                    ChampionId = preference.ChampionId,
+                    LaneId = preference.LaneId
+                });
+            }
+
+            await dbContext.SaveChangesAsync();
+            return NoContent();
+        }
     }
 }
